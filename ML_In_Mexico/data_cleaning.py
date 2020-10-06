@@ -9,7 +9,7 @@ binary_columns = ["icu", "covid_res", "contact_other_covid", "tobacco",
                   "patient_type", "sex"]
 
 def import_data():
-    df_covid = pd.read_csv("/Users/cburn/Downloads/archive/covid.csv")
+    df_covid = pd.read_csv("covid.csv")
     # print(df_covid)
     return df_covid
 
@@ -47,7 +47,13 @@ def clean_binary_columns(fully_cleaned_df_covid, df_random, df_biased_to_no):
 
 
 if __name__ == "__main__":
+    print("Importing data from CSV...")
     df_covid = import_data()
+
+    print("Cleaning Data...")
     cleaned_df, df_rand, df_biased = remove_non_applicable_data(df_covid)
+
+    print("Changing all dataframes to use a binary (1 = Yes, 0 = No) matrix...")
     clean_binary_columns(cleaned_df, df_rand, df_biased)
-    print(df_rand)
+
+    print("Done.")
