@@ -9,9 +9,45 @@ binary_columns = ["icu", "covid_res", "contact_other_covid", "tobacco",
                   "patient_type", "sex"]
 
 def import_data():
-    df_covid = pd.read_csv("covid.csv")
+    df_covid = pd.read_csv("/Users/cburn/Downloads/archive/covid.csv", parse_dates=['date_symptoms',
+                                                                                    'date_died', 'entry_date'])
     # print(df_covid)
     return df_covid
+
+
+def feature_analysis(df_covid):
+    with open("/tmp/covid_dataset_analysis.txt", "w") as f:
+        for index, column in enumerate(list(df_covid)):
+            unique_values = df_covid[column].unique()
+
+            if "id" in column:
+                unique_ids = df_covid[column].nunique()
+                df_row_count = len(df_covid)
+
+                if df_row_count == unique_ids:
+                    print(f"Number of Unique IDs ({unique_ids}) is equal to Number of Rows in Dataframe ({df_row_count}), all good.")
+                    f.write(f"\n Number of Unique IDs ({unique_ids}) is equal to Number of Rows in Dataframe ({df_row_count}), all good.\n")
+                else:
+                    print(f"Number of Unique IDs ({unique_ids}) is not equal to Number of Rows in Dataframe ({df_row_count}), please check this.")
+                    f.write(f"\n Number of Unique IDs ({unique_ids}) is not equal to Number of Rows in Dataframe ({df_row_count}), please check this. \n")
+
+            if "date" in column:
+                print(f"Earliest Date In Column {column}: ", df_covid[column].min())
+                f.write(f"\nEarliest Date In Column {column}: " + str(df_covid[column].min()) + "\n")
+
+                print(f"Latest Date In Column {column}: ", df_covid[column].max())
+                f.write(f"\nLatest Date In Column {column}: " + str(df_covid[column].max()) + "\n")
+
+            print(f"Unique Values In {column}: {df_covid[column].unique()}")
+            f.write(f"\nUnique Values In {column}: {df_covid[column].unique()} \n")
+
+            print(f"Number of Nulls or NaNs in Column {column}: ", df_covid.iloc[index].isnull().sum())
+            f.write(f"\nNumber of Nulls or NaNs in Column {column}: " + str(df_covid.iloc[index].isnull().sum()) + "\n")
+
+            print(f"Breakdown of Values in Column {column} By Percentage. \n", df_covid[column].value_counts(normalize=True) * 100, "\n --------------- \n")
+            f.write(f"\nBreakdown of Values in Column {column} By Percentage. \n" + str(df_covid[column].value_counts(normalize=True) * 100) + "\n --------------- \n")
+
+
 
 
 def remove_non_applicable_data(df_covid):
@@ -47,13 +83,8 @@ def clean_binary_columns(fully_cleaned_df_covid, df_random, df_biased_to_no):
 
 
 if __name__ == "__main__":
-    print("Importing data from CSV...")
     df_covid = import_data()
-
-    print("Cleaning Data...")
+    feature_analysis(df_covid)
     cleaned_df, df_rand, df_biased = remove_non_applicable_data(df_covid)
-
-    print("Changing all dataframes to use a binary (1 = Yes, 0 = No) matrix...")
     clean_binary_columns(cleaned_df, df_rand, df_biased)
-
-    print("Done.")
+    print(df_rand)
