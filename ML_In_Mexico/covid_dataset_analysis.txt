@@ -18,7 +18,10 @@ Breakdown of Values in Column id By Percentage.
 1e4ec2      0.000176
 10fceb      0.000176
 Name: id, Length: 563201, dtype: float64
- --------------- 
+
+
+
+ ---------------
 
 Unique Values In sex: [2 1] 
 
