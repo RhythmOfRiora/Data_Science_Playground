@@ -10,6 +10,14 @@ import torch.optim as optim
 
 def train_net():
     # Download and load the training data
+
+    best_val_prec = -1
+    best_val_recall = -1
+    best_val_f1 = -1
+    best_val_acc = -1
+    best_val_fp_rate = -1
+    best_val_miss_rate = -1
+
     training_dataset = tools.load_pickle_file('../train.pckl')
     training_covid_dataset = cvd.CovidDataset(training_dataset, get_data=True, transform=None)
     training_dataloader = torch.utils.data.DataLoader(training_covid_dataset, batch_size=1, shuffle=True)
@@ -25,17 +33,18 @@ def train_net():
     net = network.Net()
 
     # Define the loss
-    criterion = nn.CrossEntropyLoss()
+    criterion = nn.BCEWithLogitsLoss()
 
     total_start_time = time.time()
     device = torch.device('cpu')
 
-    # Optimizers require the parameters to optimize and a learning rate
+    # Optimizers require the parameters to optimize and a learning rate (experiment with the learning rate in factors of 10)
     optimizer = optim.SGD(net.parameters(), lr=0.001)
     epochs = 5
     best_f1 = 0
 
     for e in range(epochs):
+        print(f"Currently on epoch {e}...")
         running_loss = 0.0
 
         count = 0
@@ -48,17 +57,21 @@ def train_net():
             input = data[0]
             label = data[1]
 
+            label = torch.unsqueeze(label, 0)
+
             input = input.type(torch.FloatTensor)
+            label = label.type(torch.FloatTensor)
             input.requires_grad_(True)
-            print("\n\nInput: ", input)
+            # print("\n\nInput: ", input)
 
             optimizer.zero_grad()
             output = net(input)
 
-            print("Output: ", output)
-            print("Label: ", label)
+            # print("Output: ", output)
+            # print("Label: ", label)
+            # print(label.shape)
 
-            loss = criterion(input, label)
+            loss = criterion(output, label)
             loss.backward()
             optimizer.step()
 
@@ -138,21 +151,27 @@ def test_network(net=None, dataloader=None):
             test_input = data[0]
             test_label = data[1]
 
-            print(type(test_input))
+            # print(type(test_input))
 
             # test_input = [t.float() for t in test_input]
             test_input = test_input.type(torch.FloatTensor)
 
-            print(test_input)
+            # print(test_input)
             # print(len(test_input))
 
             output = net(test_input)
 
-            print(output)
+            # print(output)
 
-            value = torch.round(output)
-            predictions.append(value.type(torch.LongTensor))
-            target_labels.append(test_label.type(torch.LongTensor))
+            threshold = 0.5
+            if output.item() < threshold:
+                value = 0
+            else:
+                value = 1
+
+            # value = torch.round(output)
+            predictions.append(value)
+            target_labels.append(test_label)
             # # normalised_output = (torch.softmax(output, 1))
             # value = torch.max(output, 1)
             # predictions.append(index.item())
@@ -226,7 +245,8 @@ def evaluate_network_performance(predictions, target_labels):
     except ZeroDivisionError:
         print(f'fp_rate: caught ZeroDivisionError')
     try:
-        miss_rate = fn / (fp + tp)
+        miss_rate = 100 * (fn / (fn + tp))
+    #   miss rate is the same as 1 - recall.
     except ZeroDivisionError:
         print(f'miss_rate: caught ZeroDivisionError')
 
