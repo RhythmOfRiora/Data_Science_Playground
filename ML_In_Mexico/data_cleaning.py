@@ -18,7 +18,7 @@ def import_data():
     return df_covid
 
 
-def feature_analysis(df_covid):
+def perform_feature_analysis(df_covid):
     with open("/tmp/covid_dataset_analysis.txt", "w") as f:
         for index, column in enumerate(list(df_covid)):
             unique_values = df_covid[column].unique()
@@ -74,7 +74,7 @@ def remove_non_applicable_data(df_covid):
     #     df_biased_to_no.loc[df_biased_to_no[col] > 1, col] = 2
 
 
-    return df_covid, df_random, df_biased_to_no
+    return df_covid
 
 
 def clean_binary_columns(fully_cleaned_df_covid, df_random, df_biased_to_no):
@@ -106,12 +106,24 @@ def get_feature_vectors(columns, df_covid):
     # USE DATASET ID AS filename
     feature_vector = {}
 
-    print(df_covid)
+    print(df_covid.columns)
+
+    # RENAME FILE NAMES TO IDs OF FILES RATHER THAN row_x!
 
 
+    i = {'intubed': 0, 'not_intubed': 0}
     # Take each row in the dataframe...
     for index, row in enumerate(np.array(df_covid)):
+        row = row[1:]
         intubed = True if row[2] == 1 else False
+        if intubed:
+            i['intubed'] += 1
+        else:
+            i['not_intubed'] += 1
+        print(row)
+        print(row[0])
+        print(row[2])
+
         path = "not_intubed" if not intubed else "intubed"
 
         # Put in another sanity check here, and in all the feature vector functions.
@@ -139,7 +151,7 @@ def get_feature_vectors(columns, df_covid):
         # Capture the length of the feature vector.
 
         # save to csv file
-        savetxt(f"/Users/cburn/Data_Science_Playground/ML_In_Mexico/{path}/row_{index}.csv", np.asarray(feature_vector), delimiter=',')
+        # savetxt(f"/Users/cburn/Data_Science_Playground/ML_In_Mexico/{path}/row_{index}.csv", np.asarray(feature_vector), delimiter=',')
         save(f"/Users/cburn/Data_Science_Playground/ML_In_Mexico/{path}_npy/row_{index}.npy", np.asarray(feature_vector))
         print("VECTOR: ", feature_vector)
 
@@ -149,6 +161,7 @@ def get_feature_vectors(columns, df_covid):
     #
     # print("\n-----------------\n")
     # print(feature_vector)
+    print(i)
     return df_covid
 
 
@@ -257,7 +270,7 @@ def get_feature_vector(column_value, col, df_covid):
 
 def clean_data():
     df_covid = import_data()
-    feature_analysis(df_covid)
+    perform_feature_analysis(df_covid)
 
     drop_bad_columns(df_covid)
     # drop_bad_label_rows(df_covid)
@@ -274,7 +287,7 @@ def clean_data():
 
 if __name__ == "__main__":
     df_covid = import_data()
-    feature_analysis(df_covid)
+    perform_feature_analysis(df_covid)
 
     drop_bad_columns(df_covid)
     # drop_bad_label_rows(df_covid)
@@ -285,7 +298,7 @@ if __name__ == "__main__":
        'cardiovascular', 'obesity', 'renal_chronic', 'tobacco',
        'contact_other_covid', 'covid_res', 'icu']
 
-    cleaned_df, df_rand, df_biased = remove_non_applicable_data(df_covid)
+    cleaned_df = remove_non_applicable_data(df_covid)
     features = get_feature_vectors(columns, cleaned_df)
 
 

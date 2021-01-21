@@ -1,10 +1,12 @@
 import os
 import math
+import ML_In_Mexico.config.settings as settings
+import pickle
 from random import sample
 from random import choice
 
 
-def create_dataset_splits(positive_path, negative_path, train_split, val_split, test_split, save_path, subsample):
+def create_dataset_splits(positive_path, negative_path, train_split=0.8, val_split=0.1, test_split=0.1, save_path="/tmp/ml_data/", subsample=True):
     """
     intubed_path: path to the folder containing all the intubated samples that are .npy arrays.
     not_tubed_path: path to the folder containing all the not intubated samples that are .npy arrays.
@@ -16,25 +18,26 @@ def create_dataset_splits(positive_path, negative_path, train_split, val_split, 
     """
 
 
-    train_split = 0.8 #80%
-    val_split = 0.1 #10%
-    test_split = 0.1 #10%
+    train_split = 0.8 # 80%
+    val_split = 0.1 # 10%
+    test_split = 0.1 # 10%
 
     # do some validation on the split!  make sure they add up to 1, and that they are all 0<=x<=1
 
     save_path = "/Users/cburn/Data_Science_Playground/ML_In_Mexico/split_data_dir"
 
     # enumerate all the intubated samples
-    intubated_samples = os.scandir("/Users/cburn/Data_Science_Playground/ML_In_Mexico/intubed")
-    non_intubated_samples = os.scandir("/Users/cburn/Data_Science_Playground/ML_In_Mexico/not_intubed")
+    intubated_samples = os.scandir(positive_path)
+    non_intubated_samples = os.scandir(negative_path)
 
     # enumerate all the not_intubed samples
 
     # use os.walk, scandir
 
-    intubed_samples = [str(entry.path) for entry in intubated_samples] # 2560, positive case
+    intubed_samples = [(str(entry.path), 1) for entry in intubated_samples] # 2560, positive case
     print(f"Number of intubed sample files: {len(intubed_samples)}")
-    not_intubed_samples = [str(entry.path) for entry in non_intubated_samples] #20600, negative case
+
+    not_intubed_samples = [(str(entry.path), 0) for entry in non_intubated_samples] #20600, negative case
     print(f"Number of non-intubed sample files: {len(not_intubed_samples)}")
 
     # positive cases should always be in the minority in binary classification problems.
@@ -46,6 +49,8 @@ def create_dataset_splits(positive_path, negative_path, train_split, val_split, 
     	# if is not_intubated_samples (very likely!) then subsample to get (intubed_samples+1) not_intubed samples
     	# use the random library for example….should be able to pass in a list, and the number you want to subsample….e.g. random.subsample(not_intubed_samples, 2561)
     # 2561 intubated, 2562 not intubated
+
+        # Don't generalize - distinguish between the positive dataset and the negative one.
         num_samples_needed = min(len(intubed_samples), len(not_intubed_samples)) + 1
 
         print(f"Number of samples needed: {num_samples_needed}")
@@ -67,6 +72,7 @@ def create_dataset_splits(positive_path, negative_path, train_split, val_split, 
     # # again there are subsampling functions….these will return a random n indices from a list, and I think you can specify indices to exclude...maybe
     #
         train_split_intubated_filepaths = sample(intubed_samples, num_train_intubated)
+
         val_split_intubated_filepaths = custom_sample(intubed_samples, num_needed=num_val_intubated,
                                                     exclude=train_split_intubated_filepaths)
 
@@ -74,9 +80,9 @@ def create_dataset_splits(positive_path, negative_path, train_split, val_split, 
         test_split_intubated_filepaths = custom_sample(intubed_samples, num_needed=num_test_intubated,
                                                      exclude=train_split_intubated_filepaths + val_split_intubated_filepaths)
 
-        print(test_split_intubated_filepaths)
+
     #
-    # # now we have the indices, great...go get the actual files.
+    # # now we have the indices, great... go get the actual files.
     #
     # train_split_intubated_filepaths =  [intubed_samples[index] for index in train_split_intubated_indices]
     # do the same for train/val/test for intubated and not intubated
@@ -89,7 +95,10 @@ def create_dataset_splits(positive_path, negative_path, train_split, val_split, 
                                                          exclude=train_split_not_intubated_filepaths + val_split_not_intubated_filepaths)
 
          # add the train_intubated + train_not_intubated together etc etc etc
+        print(len(train_split_intubated_filepaths), len(train_split_not_intubated_filepaths))
+
         training_data = train_split_intubated_filepaths + train_split_not_intubated_filepaths
+        print(len(training_data))
         validation_data = val_split_intubated_filepaths + val_split_not_intubated_filepaths
         testing_data = test_split_intubated_filepaths + test_split_not_intubated_filepaths
 
@@ -107,19 +116,30 @@ def create_dataset_splits(positive_path, negative_path, train_split, val_split, 
         print(f"validation data length: {len(validation_data)} (should be {num_val_intubated} + {num_val_not_intubated} = {num_val_intubated + num_val_not_intubated})")
         print(f"testing data length: {len(testing_data)} (should be {num_test_intubated} + {num_test_not_intubated} = {num_test_intubated + num_test_not_intubated})")
 
+        # # then save each split as a pickle file to disk
+        #
+        # pickle.dump(training_data, open(f"{save_path}/train.pckl", "wb"))
+        # pickle.dump(validation_data, open(f"{save_path}/validation.pckl", "wb"))
+        # pickle.dump(testing_data, open(f"{save_path}/testing.pckl", "wb"))
 
-def custom_sample(data, num_needed=10, exclude=None):
+
+def custom_sample(data, num_needed, exclude=None):
+    # Add comments here
     choices = set(data) - set(exclude)
     if len(list(choices)) >= num_needed:
         return sample(list(choices), num_needed)
     else:
-        raise Exception("It looks like you're excluding more choices than you have unique samples. You won't get unique samples with your current settings.")
+        raise Exception("You're asking for more samples than you have unique data records.")
 
 
-
-
-
-# then save each split as a pickle file to disk
 
 if __name__ == "__main__":
-    create_dataset_splits(positive_path="/Users/cburn/Data_Science_Playground/ML_In_Mexico/intubed", negative_path="/Users/cburn/Data_Science_Playground/ML_In_Mexico/not_intubed", train_split=0.8, val_split=0.1, test_split=0.1, save_path="/Users/cburn/Data_Science_Playground/ML_In_Mexico/split_data_dir", subsample=True)
+    create_dataset_splits(positive_path=settings.positive_path,
+                          negative_path=settings.negative_path,
+                          train_split=0.8, val_split=0.1, test_split=0.1, \
+                          save_path="/Users/cburn/Data_Science_Playground/ML_In_Mexico/split_data_dir",
+                          subsample=True)
+
+    # encapsulate descriptions in file names -- parameterize the save file names & paths.
+    # Look at data loaders!
+
