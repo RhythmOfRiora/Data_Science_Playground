@@ -307,7 +307,7 @@ def convert(x):
     try:
         return datetime.datetime.strptime(str(x['date_died']), '%d-%m-%Y').date()
     except ValueError as err:
-        return None
+        return datetime.date(2019, 1, 1)
 
 
 def create_new_columns(df_covid):
@@ -325,7 +325,10 @@ def create_new_columns(df_covid):
     df_covid['date_died'] = temp_df.apply(lambda x: convert(x), axis=1)
 
     df_covid['days_until_hospitalized'] = (df_covid['entry_date'] - df_covid['date_symptoms']).dt.days
-    df_covid['days_until_died_from_being_hospitalized'] = df_covid['date_died'].dt.days - df_covid['entry_date'].dt.days
+    df_covid['days_until_died_from_being_hospitalized'] = (df_covid['date_died'] - df_covid['entry_date']).dt.days
+
+    # If they haven't died (i.e. it's a negative value of days), change this to 0.
+    df_covid['days_until_died_from_being_hospitalized'][df_covid['days_until_died_from_being_hospitalized'] < 0] = 0
 
     print(df_covid['date_symptoms'][0], df_covid['entry_date'][0], df_covid['days_until_hospitalized'][0], df_covid['days_until_died_from_being_hospitalized'][0])
     print(df_covid['days_until_hospitalized'])
@@ -359,5 +362,5 @@ if __name__ == "__main__":
     print(cleaned_df.head(10))
 
     # TAKE A LOOK AT % OF ZEROES AND ONES
-    
+
     # features = get_feature_vectors(columns, cleaned_df)
