@@ -63,9 +63,9 @@ def create_dataset_splits(positive_path, negative_path, train_split=0.8, val_spl
         num_val_intubated = math.floor(val_split * len(intubed_samples)) # might need math.floor...prob will to get an int back
         num_test_intubated = len(intubed_samples) - num_val_intubated - num_train_intubated
 
-        num_train_not_intubated = math.floor(train_split * len(not_intubed_samples)) # might need math.floor...prob will to get an int back
-        num_val_not_intubated = math.floor(val_split * len(not_intubed_samples)) # might need math.floor...prob will to get an int back
-        num_test_not_intubated = len(not_intubed_samples) - num_val_not_intubated - num_train_not_intubated
+        num_train_not_intubated = math.floor(train_split * len(random_sample_list)) # might need math.floor...prob will to get an int back
+        num_val_not_intubated = math.floor(val_split * len(random_sample_list)) # might need math.floor...prob will to get an int back
+        num_test_not_intubated = len(random_sample_list) - num_val_not_intubated - num_train_not_intubated
     #
     # # then repeat that (above) for the not_intubated
     #
@@ -87,11 +87,11 @@ def create_dataset_splits(positive_path, negative_path, train_split=0.8, val_spl
     # train_split_intubated_filepaths =  [intubed_samples[index] for index in train_split_intubated_indices]
     # do the same for train/val/test for intubated and not intubated
 
-        train_split_not_intubated_filepaths = sample(not_intubed_samples, num_train_not_intubated)
-        val_split_not_intubated_filepaths = custom_sample(not_intubed_samples, num_needed=num_val_not_intubated,
+        train_split_not_intubated_filepaths = sample(random_sample_list, num_train_not_intubated)
+        val_split_not_intubated_filepaths = custom_sample(random_sample_list, num_needed=num_val_not_intubated,
                                                         exclude=train_split_not_intubated_filepaths)
 
-        test_split_not_intubated_filepaths = custom_sample(not_intubed_samples, num_needed=num_test_not_intubated,
+        test_split_not_intubated_filepaths = custom_sample(random_sample_list, num_needed=num_test_not_intubated,
                                                          exclude=train_split_not_intubated_filepaths + val_split_not_intubated_filepaths)
 
          # add the train_intubated + train_not_intubated together etc etc etc
@@ -118,9 +118,9 @@ def create_dataset_splits(positive_path, negative_path, train_split=0.8, val_spl
 
         # # then save each split as a pickle file to disk
         #
-        # pickle.dump(training_data, open(f"{save_path}/train.pckl", "wb"))
-        # pickle.dump(validation_data, open(f"{save_path}/validation.pckl", "wb"))
-        # pickle.dump(testing_data, open(f"{save_path}/testing.pckl", "wb"))
+        pickle.dump(training_data, open(f"{save_path}/train_balanced.pckl", "wb"))
+        pickle.dump(validation_data, open(f"{save_path}/validation_balanced.pckl", "wb"))
+        pickle.dump(testing_data, open(f"{save_path}/testing_balanced.pckl", "wb"))
 
 
 def custom_sample(data, num_needed, exclude=None):

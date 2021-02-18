@@ -18,11 +18,11 @@ def train_net():
     best_val_fp_rate = -1
     best_val_miss_rate = -1
 
-    training_dataset = tools.load_pickle_file('../train.pckl')
+    training_dataset = tools.load_pickle_file('split_data_dir/train_balanced.pckl')
     training_covid_dataset = cvd.CovidDataset(training_dataset, get_data=True, transform=None)
     training_dataloader = torch.utils.data.DataLoader(training_covid_dataset, batch_size=1, shuffle=True)
 
-    validation_dataset = tools.load_pickle_file('../validation.pckl')
+    validation_dataset = tools.load_pickle_file('split_data_dir/validation_balanced.pckl')
     validation_covid_dataset = cvd.CovidDataset(validation_dataset, get_data=True, transform=None)
     validation_dataloader = torch.utils.data.DataLoader(validation_covid_dataset, batch_size=1, shuffle=True)
 
@@ -39,8 +39,8 @@ def train_net():
     device = torch.device('cpu')
 
     # Optimizers require the parameters to optimize and a learning rate (experiment with the learning rate in factors of 10)
-    optimizer = optim.SGD(net.parameters(), lr=0.001)
-    epochs = 5
+    optimizer = optim.SGD(net.parameters(), lr=0.001, momentum=0.9)
+    epochs = 10
     best_f1 = 0
 
     for e in range(epochs):

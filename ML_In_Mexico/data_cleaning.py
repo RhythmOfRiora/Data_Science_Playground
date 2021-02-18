@@ -4,6 +4,8 @@ import random
 import numpy as np
 from numpy import savetxt
 from numpy import save
+import datetime
+from sklearn import preprocessing
 
 binary_columns = ["icu", "covid_res", "contact_other_covid", "tobacco",
                   "renal_chronic", "obesity", "cardiovascular",
@@ -58,11 +60,23 @@ def remove_non_applicable_data(df_covid):
     df_random = copy.deepcopy(df_covid)
     df_biased_to_no = copy.deepcopy(df_covid)
 
-
+    columns_to_target = ["sex", "patient_type", "pneumonia", "diabetes", "asthma", "hypertension", "obesity",
+                         "tobacco"]
     # This Dataframe drops any rows that don't have values 1 or 2 - and so, will not be very large.
-    for col in binary_columns:
+    for col in columns_to_target:
         df_covid.drop(df_covid[df_covid[col] > 3].index, inplace=True)
         df_covid.loc[df_covid[col] == 2, col] = 0
+
+
+    # Scale the date columns.
+    x = df_covid.values  # returns a numpy array
+    scaler = preprocessing.MinMaxScaler()
+    df_covid[["days_until_died_from_being_hospitalized", "days_until_died_from_being_hospitalized"]] = \
+        scaler.fit_transform(df_covid[["days_until_died_from_being_hospitalized", "days_until_died_from_being_hospitalized"]])
+
+    return df_covid
+
+
 
     # # This Dataframe randomly assigns 1 or 2 to rows which don't have values 1 or 2 in a column.
     # for col in binary_columns:
@@ -85,13 +99,16 @@ def clean_binary_columns(fully_cleaned_df_covid, df_random, df_biased_to_no):
             dataframe.loc[dataframe[col] > 1, col] = 0
 
 
-def drop_bad_columns(df_covid):
-    # del df_covid['id']
-    del df_covid['entry_date']
-    del df_covid['date_symptoms']
-    del df_covid['date_died']
-    del df_covid['age']
-
+def drop_bad_columns(df_covid, columns_to_target=None):
+    if not columns_to_target:
+        # del df_covid['id']
+        del df_covid['entry_date']
+        del df_covid['date_symptoms']
+        del df_covid['date_died']
+        del df_covid['age']
+    else:
+        df_covid = df_covid[df_covid.columns.intersection(columns_to_target)]
+    return df_covid
 
 # def drop_bad_label_rows(df_covid):
 #     print(f"Dataframe Intubed Column (Length {len(df_covid)}) Before Drop: ")
@@ -147,6 +164,8 @@ def get_feature_vectors(columns, df_covid):
         feature_vector.extend(get_vector_contact_other_covid(row[15]))
         feature_vector.extend(get_vector_covid_res(row[16]))
         feature_vector.extend(get_vector_icu(row[17]))
+        feature_vector.extend([row[18]])
+        feature_vector.extend([row[19]])
 
         # Capture the length of the feature vector.
 
@@ -279,29 +298,66 @@ def clean_data():
     columns = ['sex', 'patient_type', 'pneumonia', 'pregnancy', 'diabetes',
                'copd', 'asthma', 'inmsupr', 'hypertension', 'other_disease',
                'cardiovascular', 'obesity', 'renal_chronic', 'tobacco',
-               'contact_other_covid', 'covid_res', 'icu']
+               'contact_other_covid', 'covid_res', 'icu', 'days_until_hospitalized', 'days_until_died_from_being_hospitalized']
 
     cleaned_df, df_rand, df_biased = remove_non_applicable_data(df_covid)
     features = get_feature_vectors(columns, cleaned_df)
 
+def convert(x):
+    try:
+        return datetime.datetime.strptime(str(x['date_died']), '%d-%m-%Y').date()
+    except ValueError as err:
+        return None
+
+
+def create_new_columns(df_covid):
+    import datetime
+    from datetime import date
+    days_until_hospitalized = 1
+    print(df_covid['date_symptoms'][0])
+    df_covid['date_symptoms'] = df_covid['date_symptoms'].apply(
+        lambda x: datetime.datetime.strptime(str(x), '%Y-%m-%d %H:%M:%S').date())
+
+    df_covid['entry_date'] = df_covid['entry_date'].apply(
+        lambda x: datetime.datetime.strptime(str(x), '%Y-%m-%d %H:%M:%S').date())
+
+    temp_df = df_covid[['entry_date', 'date_died']]
+    df_covid['date_died'] = temp_df.apply(lambda x: convert(x), axis=1)
+
+    df_covid['days_until_hospitalized'] = (df_covid['entry_date'] - df_covid['date_symptoms']).dt.days
+    df_covid['days_until_died_from_being_hospitalized'] = df_covid['date_died'].dt.days - df_covid['entry_date'].dt.days
+
+    print(df_covid['date_symptoms'][0], df_covid['entry_date'][0], df_covid['days_until_hospitalized'][0], df_covid['days_until_died_from_being_hospitalized'][0])
+    print(df_covid['days_until_hospitalized'])
+    print(df_covid['days_until_died_from_being_hospitalized'])
+
+    print(df_covid)
+    print(df_covid.columns)
+
+
 
 if __name__ == "__main__":
-    df_covid = import_data()
-    perform_feature_analysis(df_covid)
+    # columns = ['sex', 'patient_type', 'pneumonia', 'pregnancy', 'diabetes',
+    #    'copd', 'asthma', 'inmsupr', 'hypertension', 'other_disease',
+    #    'cardiovascular', 'obesity', 'renal_chronic', 'tobacco',
+    #    'contact_other_covid', 'covid_res', 'icu']
 
-    drop_bad_columns(df_covid)
+    columns_to_target = ["id", "sex", "patient_type", "pneumonia", "diabetes", "asthma", "hypertension", "obesity",
+                         "tobacco", "days_until_died_from_being_hospitalized", "days_until_died_from_being_hospitalized"]
+    df_covid = import_data()
+    # perform_feature_analysis(df_covid)
+    create_new_columns(df_covid)
+
+    df_covid = drop_bad_columns(df_covid, columns_to_target)
     # drop_bad_label_rows(df_covid)
 
     print(df_covid.columns)
-    columns = ['sex', 'patient_type', 'pneumonia', 'pregnancy', 'diabetes',
-       'copd', 'asthma', 'inmsupr', 'hypertension', 'other_disease',
-       'cardiovascular', 'obesity', 'renal_chronic', 'tobacco',
-       'contact_other_covid', 'covid_res', 'icu']
+
 
     cleaned_df = remove_non_applicable_data(df_covid)
-    features = get_feature_vectors(columns, cleaned_df)
+    pd.set_option('display.max_columns', None)
+    print(cleaned_df.head(10))
 
-
-
-    # clean_binary_columns(cleaned_df, df_rand, df_biased)
-    # print(df_rand)
+    # TAKE A LOOK AT % OF ZEROES AND ONES
+    
+    # features = get_feature_vectors(columns, cleaned_df)
