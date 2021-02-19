@@ -108,6 +108,7 @@ def drop_bad_columns(df_covid, columns_to_target=None):
         del df_covid['age']
     else:
         df_covid = df_covid[df_covid.columns.intersection(columns_to_target)]
+
     return df_covid
 
 # def drop_bad_label_rows(df_covid):
@@ -131,15 +132,16 @@ def get_feature_vectors(columns, df_covid):
     i = {'intubed': 0, 'not_intubed': 0}
     # Take each row in the dataframe...
     for index, row in enumerate(np.array(df_covid)):
+        intubed_col_index = list(df_covid.columns).index("intubed") - 1
+
+        record_id = row[0]
         row = row[1:]
-        intubed = True if row[2] == 1 else False
+        intubed = True if row[intubed_col_index] == 1 else False
         if intubed:
             i['intubed'] += 1
         else:
             i['not_intubed'] += 1
         print(row)
-        print(row[0])
-        print(row[2])
 
         path = "not_intubed" if not intubed else "intubed"
 
@@ -147,31 +149,35 @@ def get_feature_vectors(columns, df_covid):
 
         feature_vector = []
 
+        columns_to_target = ["id", "intubed", "sex", "patient_type", "pneumonia", "diabetes", "asthma", "hypertension",
+                             "obesity",
+                             "tobacco", "days_until_hospitalized", "days_until_died_from_being_hospitalized"]
+
         feature_vector.extend(get_vector_sex(row[0]))
         feature_vector.extend(get_vector_patient_type(row[1]))
         feature_vector.extend(get_vector_pneumonia(row[3]))
-        feature_vector.extend(get_vector_pregnancy(row[4]))
-        feature_vector.extend(get_vector_diabetes(row[5]))
-        feature_vector.extend(get_vector_copd(row[6]))
-        feature_vector.extend(get_vector_asthma(row[7]))
-        feature_vector.extend(get_vector_inmsupr(row[8]))
-        feature_vector.extend(get_vector_hypertension(row[9]))
-        feature_vector.extend(get_vector_other_disease(row[10]))
-        feature_vector.extend(get_vector_cardiovascular(row[11]))
-        feature_vector.extend(get_vector_obesity(row[12]))
-        feature_vector.extend(get_vector_renal_chronic(row[13]))
-        feature_vector.extend(get_vector_tobacco(row[14]))
-        feature_vector.extend(get_vector_contact_other_covid(row[15]))
-        feature_vector.extend(get_vector_covid_res(row[16]))
-        feature_vector.extend(get_vector_icu(row[17]))
-        feature_vector.extend([row[18]])
-        feature_vector.extend([row[19]])
+        # feature_vector.extend(get_vector_pregnancy(row[4]))
+        feature_vector.extend(get_vector_diabetes(row[4]))
+        # feature_vector.extend(get_vector_copd(row[6]))
+        feature_vector.extend(get_vector_asthma(row[5]))
+        # feature_vector.extend(get_vector_inmsupr(row[8]))
+        feature_vector.extend(get_vector_hypertension(row[6]))
+        # feature_vector.extend(get_vector_other_disease(row[10]))
+        # feature_vector.extend(get_vector_cardiovascular(row[11]))
+        feature_vector.extend(get_vector_obesity(row[7]))
+        # feature_vector.extend(get_vector_renal_chronic(row[13]))
+        feature_vector.extend(get_vector_tobacco(row[8]))
+        # feature_vector.extend(get_vector_contact_other_covid(row[15]))
+        # feature_vector.extend(get_vector_covid_res(row[16]))
+        # feature_vector.extend(get_vector_icu(row[17]))
+        feature_vector.extend([row[9]])
+        feature_vector.extend([row[10]])
 
         # Capture the length of the feature vector.
 
-        # save to csv file
-        # savetxt(f"/Users/cburn/Data_Science_Playground/ML_In_Mexico/{path}/row_{index}.csv", np.asarray(feature_vector), delimiter=',')
-        save(f"/Users/cburn/Data_Science_Playground/ML_In_Mexico/{path}_npy/row_{index}.npy", np.asarray(feature_vector))
+        # save to numpy file
+
+        save(f"/Users/cburn/Data_Science_Playground/ML_In_Mexico/{path}_npy/{record_id}.npy", np.asarray(feature_vector))
         print("VECTOR: ", feature_vector)
 
     #         for i, col in enumerate(columns):
@@ -311,6 +317,8 @@ def convert(x):
 
 
 def create_new_columns(df_covid):
+
+
     import datetime
     from datetime import date
     days_until_hospitalized = 1
@@ -324,15 +332,19 @@ def create_new_columns(df_covid):
     temp_df = df_covid[['entry_date', 'date_died']]
     df_covid['date_died'] = temp_df.apply(lambda x: convert(x), axis=1)
 
+    # Sanitize the entry dates / date_symptoms. Check if date_symptoms is before entry_date. Could take out whole row? Look at how many are corrupt.
+    # Do this as a funciton - pass in column and make a report for each column.
     df_covid['days_until_hospitalized'] = (df_covid['entry_date'] - df_covid['date_symptoms']).dt.days
     df_covid['days_until_died_from_being_hospitalized'] = (df_covid['date_died'] - df_covid['entry_date']).dt.days
 
     # If they haven't died (i.e. it's a negative value of days), change this to 0.
-    df_covid['days_until_died_from_being_hospitalized'][df_covid['days_until_died_from_being_hospitalized'] < 0] = 0
+    df_covid['days_until_died_from_being_hospitalized'][df_covid['days_until_died_from_being_hospitalized'] < 0] = -1
 
     print(df_covid['date_symptoms'][0], df_covid['entry_date'][0], df_covid['days_until_hospitalized'][0], df_covid['days_until_died_from_being_hospitalized'][0])
     print(df_covid['days_until_hospitalized'])
     print(df_covid['days_until_died_from_being_hospitalized'])
+
+
 
     print(df_covid)
     print(df_covid.columns)
@@ -340,16 +352,30 @@ def create_new_columns(df_covid):
 
 
 if __name__ == "__main__":
+    # Write code to recreate the same data splits as we originally made, but with 9 features rather than 19.
+    # We have the pickle files - go to these and use the ids to create the new splits in the data & save as a new pickle file.
+
+    # Enumerate the existing pickle files, pick a datastructure and store each of the Ids in a data struct that represents
+    # the train.test.validation sets. i.e. {"train": [] ... , "test": [] ... , "val": [] ...}
+    # Enumerate dir where new feature vectors are saved, use a dict to parse the ids from the numpy files
+    # - map this to the actual filepath for 9-feature numpy array for that particular id.
+
+    # Go abck to first set of datastructures and iterate over train, test, validation & use each
+    # id to retrieve filepath from second ds where the 9-feature numpy array is located. Reuse final step & save.
+
+
     # columns = ['sex', 'patient_type', 'pneumonia', 'pregnancy', 'diabetes',
     #    'copd', 'asthma', 'inmsupr', 'hypertension', 'other_disease',
     #    'cardiovascular', 'obesity', 'renal_chronic', 'tobacco',
     #    'contact_other_covid', 'covid_res', 'icu']
 
-    columns_to_target = ["id", "sex", "patient_type", "pneumonia", "diabetes", "asthma", "hypertension", "obesity",
-                         "tobacco", "days_until_died_from_being_hospitalized", "days_until_died_from_being_hospitalized"]
+    columns_to_target = ["id", "intubed", "sex", "patient_type", "pneumonia", "diabetes", "asthma", "hypertension", "obesity",
+                         "tobacco", "days_until_hospitalized", "days_until_died_from_being_hospitalized"]
     df_covid = import_data()
     # perform_feature_analysis(df_covid)
     create_new_columns(df_covid)
+
+
 
     df_covid = drop_bad_columns(df_covid, columns_to_target)
     # drop_bad_label_rows(df_covid)
@@ -363,4 +389,4 @@ if __name__ == "__main__":
 
     # TAKE A LOOK AT % OF ZEROES AND ONES
 
-    # features = get_feature_vectors(columns, cleaned_df)
+    features = get_feature_vectors(columns_to_target, cleaned_df)
